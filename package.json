@@ -1,0 +1,41 @@
+{
+  "name": "@aha-develop/salesforce-case-import",
+  "description": "Salesforce case import",
+  "version": "1.0.0",
+  "author": "Aha! (support@aha.io)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aha-develop/salesforce-case-import"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/react": "^17.0.40",
+    "@types/react-dom": "^17.0.13",
+    "prettier": "^2.5.1",
+    "typescript": "^4.6.2"
+  },
+  "ahaExtension": {
+    "cspSources": [
+      "https://*.salesforce.com"
+    ],
+    "contributes": {
+      "importers": {
+        "cases": {
+          "title": "Salesforce Cases",
+          "entryPoint": "src/importers/salesforce.tsx"
+        }
+      },
+      "settings": {
+        "domain": {
+          "title": "Salesforce Domain Prefix",
+          "description": "The unique domain prefix for your Salesforce account, where prefix is https://{prefix}.lightning.force.com/",
+          "default": "",
+          "type": "string",
+          "scope": [
+            "account"
+          ]
+        }
+      }
+    }
+  }
+}
