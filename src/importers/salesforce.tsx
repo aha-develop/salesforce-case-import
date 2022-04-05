@@ -157,10 +157,13 @@ importer.on({ action: 'renderRecord' }, ({ record }) => (
 ));
 
 importer.on({ action: 'importRecord' }, async ({ importRecord, ahaRecord }) => {
-  // @ts-ignore
-  ahaRecord.description = `<p>${importRecord.description.replace(
-    /\r\n/g,
-    '<br>'
-  )}</p><p><a href="${importRecord.url}">View in Salesforce</a></p>`;
+  let description = `<p><a href="${importRecord.url}">View in Salesforce</a></p>`;
+  if (importRecord.description) {
+    description = `<p>${importRecord.description.replace(
+      /\r\n/g,
+      '<br>'
+    )}</p>${description}`;
+  }
+  ahaRecord.description = description as unknown as Aha.Note;
   await ahaRecord.save();
 });
