@@ -4,14 +4,8 @@ import { settings } from '../extension';
 type ApiResponse = {
   done: boolean;
   totalSize: number;
-  records: {
-    Id: string;
-    Subject: string;
-    Description: string | null;
-    CaseNumber: string;
-    Status: string | null;
-    Priority: string | null;
-  }[];
+  records?: Record<string, unknown>[];
+  query?: string;
 };
 
 type CaseRecord = {
@@ -27,6 +21,9 @@ type CaseRecord = {
 const importer = aha.getImporter<CaseRecord>(
   'aha-develop.salesforce-case-import.cases'
 );
+
+const encodeQuery = (query: string) =>
+  encodeURIComponent(query.replace(/\s+/g, ' '));
 
 const apiRequest = async (url: string): Promise<ApiResponse> => {
   if (!settings.domain) {
@@ -70,7 +67,7 @@ const apiRequest = async (url: string): Promise<ApiResponse> => {
 };
 
 importer.on({ action: 'listFilters' }, async () => ({
-  case_type: {
+  listViewId: {
     title: 'Case Type',
     required: true,
     type: 'select',
@@ -78,36 +75,32 @@ importer.on({ action: 'listFilters' }, async () => ({
 }));
 
 importer.on({ action: 'filterValues' }, async ({ filterName }) => {
-  if (filterName === 'case_type') {
-    return [
-      {
-        text: 'Open cases',
-        value: 'open',
-      },
-      {
-        text: 'Closed cases',
-        value: 'closed',
-      },
-    ];
+  if (filterName === 'listViewId') {
+    const query = `
+      SELECT Id, Name FROM ListView WHERE SobjectType = 'Case'
+    `.trim();
+    const listViews = await apiRequest(
+      `/services/data/v54.0/query/?q=${encodeQuery(query)}`
+    );
+    return listViews.records.map(({ Name, Id }) => ({
+      text: Name,
+      value: Id,
+    }));
   }
   return [];
 });
 
 importer.on({ action: 'listCandidates' }, async ({ filters }) => {
-  if (!filters.case_type) {
+  if (!filters.listViewId) {
     return { records: [] };
   }
 
-  const query = `
-      SELECT Id, Subject, Description, CaseNumber, Status, Priority
-      FROM Case
-      WHERE IsClosed = ${filters.case_type === 'open' ? 'false' : 'true'}
-    `.trim();
+  const describe = await apiRequest(
+    `/services/data/v54.0/sobjects/Case/listviews/${filters.listViewId}/describe`
+  );
 
   const apiResponse = await apiRequest(
-    `/services/data/v54.0/query/?q=${encodeURIComponent(
-      query.replace(/\s+/g, ' ')
-    )}`
+    `/services/data/v54.0/query/?q=${encodeQuery(describe.query)}`
   );
 
   return {
