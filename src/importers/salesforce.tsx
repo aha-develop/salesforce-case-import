@@ -66,7 +66,7 @@ const apiRequest = async (url: string): Promise<ApiResponse> => {
 
 importer.on({ action: 'listFilters' }, async () => ({
   listViewId: {
-    title: 'Case Type',
+    title: 'List view',
     required: true,
     type: 'select',
   },
