@@ -29,17 +29,31 @@ const importer = aha.getImporter<CaseRecord>(
 );
 
 const apiRequest = async (url: string): Promise<ApiResponse> => {
+  if (!settings.domain) {
+    throw new aha.ConfigError(
+      'This importer requires the subdomain for your Salesforce account. Please visit Settings > Account > Extensions > Salesforce cases to provide this.'
+    );
+  }
+
   const auth = await aha.auth('salesforce', { useCachedRetry: true });
 
-  const response = await fetch(
-    `https://${settings.domain}.my.salesforce.com${url}`,
-    {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${auth.token}`,
-      },
-    }
-  );
+  let response: Response;
+
+  try {
+    response = await fetch(
+      `https://${settings.domain}.my.salesforce.com${url}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${auth.token}`,
+        },
+      }
+    );
+  } catch (e) {
+    throw new aha.ConfigError(
+      `Error fetching data from Salesforce. Check your Salesforce subdomain is correct in Settings > Account > Extensions > Salesforce cases. Salesforce requires that you grant permission to Aha! to fetch data over the API. Visit Setup > Security > CORS in Salesforce to add ${window.location.origin} to your CORS allowlist.`
+    );
+  }
 
   if (response.ok) {
     return response.json();
