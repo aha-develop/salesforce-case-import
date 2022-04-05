@@ -34,18 +34,16 @@ const apiRequest = async (url: string): Promise<ApiResponse> => {
 
   const auth = await aha.auth('salesforce', { useCachedRetry: true });
 
+  const apiBaseUrl = `https://${settings.domain}.my.salesforce.com/services/data/v54.0`;
   let response: Response;
 
   try {
-    response = await fetch(
-      `https://${settings.domain}.my.salesforce.com${url}`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${auth.token}`,
-        },
-      }
-    );
+    response = await fetch(apiBaseUrl + url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${auth.token}`,
+      },
+    });
   } catch (e) {
     throw new aha.ConfigError(
       `Error fetching data from Salesforce. Check your Salesforce subdomain is correct in Settings > Account > Extensions > Salesforce cases. Salesforce requires that you grant permission to Aha! to fetch data over the API. Visit Setup > Security > CORS in Salesforce to add ${window.location.origin} to your CORS allowlist.`
@@ -79,9 +77,7 @@ importer.on({ action: 'filterValues' }, async ({ filterName }) => {
     const query = `
       SELECT Id, Name FROM ListView WHERE SobjectType = 'Case'
     `.trim();
-    const listViews = await apiRequest(
-      `/services/data/v54.0/query/?q=${encodeQuery(query)}`
-    );
+    const listViews = await apiRequest(`/query/?q=${encodeQuery(query)}`);
     return listViews.records.map(({ Name, Id }) => ({
       text: Name,
       value: Id,
@@ -96,11 +92,11 @@ importer.on({ action: 'listCandidates' }, async ({ filters }) => {
   }
 
   const describe = await apiRequest(
-    `/services/data/v54.0/sobjects/Case/listviews/${filters.listViewId}/describe`
+    `/sobjects/Case/listviews/${filters.listViewId}/describe`
   );
 
   const apiResponse = await apiRequest(
-    `/services/data/v54.0/query/?q=${encodeQuery(describe.query)}`
+    `/query/?q=${encodeQuery(describe.query)}`
   );
 
   return {
