@@ -4,14 +4,8 @@ import { settings } from '../extension';
 type ApiResponse = {
   done: boolean;
   totalSize: number;
-  records: {
-    Id: string;
-    Subject: string;
-    Description: string | null;
-    CaseNumber: string;
-    Status: string | null;
-    Priority: string | null;
-  }[];
+  records?: Record<string, unknown>[];
+  query?: string;
 };
 
 type CaseRecord = {
@@ -28,6 +22,9 @@ const importer = aha.getImporter<CaseRecord>(
   'aha-develop.salesforce-case-import.cases'
 );
 
+const encodeQuery = (query: string) =>
+  encodeURIComponent(query.replace(/\s+/g, ' '));
+
 const apiRequest = async (url: string): Promise<ApiResponse> => {
   if (!settings.domain) {
     throw new aha.ConfigError(
@@ -37,18 +34,16 @@ const apiRequest = async (url: string): Promise<ApiResponse> => {
 
   const auth = await aha.auth('salesforce', { useCachedRetry: true });
 
+  const apiBaseUrl = `https://${settings.domain}.my.salesforce.com/services/data/v54.0`;
   let response: Response;
 
   try {
-    response = await fetch(
-      `https://${settings.domain}.my.salesforce.com${url}`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${auth.token}`,
-        },
-      }
-    );
+    response = await fetch(apiBaseUrl + url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${auth.token}`,
+      },
+    });
   } catch (e) {
     throw new aha.ConfigError(
       `Error fetching data from Salesforce. Check your Salesforce subdomain is correct in Settings > Account > Extensions > Salesforce cases. Salesforce requires that you grant permission to Aha! to fetch data over the API. Visit Setup > Security > CORS in Salesforce to add ${window.location.origin} to your CORS allowlist.`
@@ -70,44 +65,38 @@ const apiRequest = async (url: string): Promise<ApiResponse> => {
 };
 
 importer.on({ action: 'listFilters' }, async () => ({
-  case_type: {
-    title: 'Case Type',
+  listViewId: {
+    title: 'List view',
     required: true,
     type: 'select',
   },
 }));
 
 importer.on({ action: 'filterValues' }, async ({ filterName }) => {
-  if (filterName === 'case_type') {
-    return [
-      {
-        text: 'Open cases',
-        value: 'open',
-      },
-      {
-        text: 'Closed cases',
-        value: 'closed',
-      },
-    ];
+  if (filterName === 'listViewId') {
+    const query = `
+      SELECT Id, Name FROM ListView WHERE SobjectType = 'Case'
+    `.trim();
+    const listViews = await apiRequest(`/query/?q=${encodeQuery(query)}`);
+    return listViews.records.map(({ Name, Id }) => ({
+      text: Name,
+      value: Id,
+    }));
   }
   return [];
 });
 
 importer.on({ action: 'listCandidates' }, async ({ filters }) => {
-  if (!filters.case_type) {
+  if (!filters.listViewId) {
     return { records: [] };
   }
 
-  const query = `
-      SELECT Id, Subject, Description, CaseNumber, Status, Priority
-      FROM Case
-      WHERE IsClosed = ${filters.case_type === 'open' ? 'false' : 'true'}
-    `.trim();
+  const describe = await apiRequest(
+    `/sobjects/Case/listviews/${filters.listViewId}/describe`
+  );
 
   const apiResponse = await apiRequest(
-    `/services/data/v54.0/query/?q=${encodeURIComponent(
-      query.replace(/\s+/g, ' ')
-    )}`
+    `/query/?q=${encodeQuery(describe.query)}`
   );
 
   return {
