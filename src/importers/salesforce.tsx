@@ -59,8 +59,8 @@ const apiRequest = async (url: string): Promise<ApiResponse> => {
             <p>
               2. Salesforce requires that you grant permission to Aha! to fetch
               data over the API. Visit Setup &gt; Security &gt; CORS in
-              Salesforce to add {window.location.origin} to your CORS allow
-              list.
+              Salesforce to add <strong>{window.location.origin}</strong> to
+              your CORS allow list.
             </p>
             <p>
               3. Your auth token may have expired, try authenticating using the
