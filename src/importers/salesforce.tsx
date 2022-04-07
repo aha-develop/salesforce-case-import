@@ -45,8 +45,30 @@ const apiRequest = async (url: string): Promise<ApiResponse> => {
       },
     });
   } catch (e) {
-    throw new aha.ConfigError(
-      `Error fetching data from Salesforce. Check your Salesforce subdomain is correct in Settings > Account > Extensions > Salesforce cases. Salesforce requires that you grant permission to Aha! to fetch data over the API. Visit Setup > Security > CORS in Salesforce to add ${window.location.origin} to your CORS allowlist.`
+    throw new aha.AuthError(
+      'Error fetching data from Salesforce.',
+      'salesforce',
+      {
+        displayError: (
+          <>
+            <p>Error fetching data from Salesforce.</p>
+            <p>
+              1. Check your Salesforce subdomain is correct in Settings &gt;
+              Account &gt; Extensions &gt; Salesforce cases.
+            </p>
+            <p>
+              2. Salesforce requires that you grant permission to Aha! to fetch
+              data over the API. Visit Setup &gt; Security &gt; CORS in
+              Salesforce to add <strong>{window.location.origin}</strong> to
+              your CORS allow list.
+            </p>
+            <p>
+              3. Your auth token may have expired, try authenticating using the
+              button below.
+            </p>
+          </>
+        ),
+      }
     );
   }
 
