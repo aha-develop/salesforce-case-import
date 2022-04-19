@@ -26,7 +26,10 @@ const importer = aha.getImporter<CaseRecord>(
 const encodeQuery = (query: string) =>
   encodeURIComponent(query.replace(/\s+/g, ' '));
 
-const apiRequest = async (url: string, base: string = '/services/data/v54.0'): Promise<ApiResponse> => {
+const apiRequest = async (
+  url: string,
+  base: string = '/services/data/v54.0'
+): Promise<ApiResponse> => {
   if (!settings.domain) {
     throw new aha.ConfigError(
       'This importer requires the subdomain for your Salesforce account. Please visit Settings > Account > Extensions > Salesforce cases to provide this.'
@@ -131,7 +134,7 @@ importer.on({ action: 'listCandidates' }, async ({ filters }) => {
       description: item.Description,
       status: item.Status,
       priority: item.Priority,
-      jsonUrl: item.attributes.url
+      jsonUrl: item.attributes.url,
     })),
   };
 });
@@ -193,13 +196,13 @@ importer.on({ action: 'importRecord' }, async ({ importRecord, ahaRecord }) => {
     )}</p>${description}`;
   } else {
     try {
-      const caseDetails = await apiRequest(importRecord.jsonUrl, '')
+      const caseDetails = await apiRequest(importRecord.jsonUrl, '');
       description = `<p>${caseDetails.Description.replace(
         /\r\n/g,
         '<br>'
       )}</p>${description}`;
     } catch (e) {
-      console.warn("Unable to fetch description", e)
+      console.warn('Unable to fetch description', e);
     }
   }
 
