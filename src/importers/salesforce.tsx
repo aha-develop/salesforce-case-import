@@ -16,6 +16,7 @@ type CaseRecord = {
   description?: string;
   status?: string;
   priority?: string;
+  jsonUrl: string;
 };
 
 const importer = aha.getImporter<CaseRecord>(
@@ -25,7 +26,7 @@ const importer = aha.getImporter<CaseRecord>(
 const encodeQuery = (query: string) =>
   encodeURIComponent(query.replace(/\s+/g, ' '));
 
-const apiRequest = async (url: string): Promise<ApiResponse> => {
+const apiRequest = async (url: string, base: string = '/services/data/v54.0'): Promise<ApiResponse> => {
   if (!settings.domain) {
     throw new aha.ConfigError(
       'This importer requires the subdomain for your Salesforce account. Please visit Settings > Account > Extensions > Salesforce cases to provide this.'
@@ -34,7 +35,7 @@ const apiRequest = async (url: string): Promise<ApiResponse> => {
 
   const auth = await aha.auth('salesforce', { useCachedRetry: true });
 
-  const apiBaseUrl = `https://${settings.domain}.my.salesforce.com/services/data/v54.0`;
+  const apiBaseUrl = `https://${settings.domain}.my.salesforce.com${base}`;
   let response: Response;
 
   try {
@@ -130,6 +131,7 @@ importer.on({ action: 'listCandidates' }, async ({ filters }) => {
       description: item.Description,
       status: item.Status,
       priority: item.Priority,
+      jsonUrl: item.attributes.url
     })),
   };
 });
@@ -183,12 +185,24 @@ importer.on({ action: 'renderRecord' }, ({ record }) => (
 
 importer.on({ action: 'importRecord' }, async ({ importRecord, ahaRecord }) => {
   let description = `<p><a href="${importRecord.url}">View in Salesforce</a></p>`;
+
   if (importRecord.description) {
     description = `<p>${importRecord.description.replace(
       /\r\n/g,
       '<br>'
     )}</p>${description}`;
+  } else {
+    try {
+      const caseDetails = await apiRequest(importRecord.jsonUrl, '')
+      description = `<p>${caseDetails.Description.replace(
+        /\r\n/g,
+        '<br>'
+      )}</p>${description}`;
+    } catch (e) {
+      console.warn("Unable to fetch description", e)
+    }
   }
+
   ahaRecord.description = description as unknown as Aha.Note;
   await ahaRecord.save();
 });
